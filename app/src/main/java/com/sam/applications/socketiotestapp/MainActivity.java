@@ -6,6 +6,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.widget.TextView;
 
+import org.apache.http.conn.ssl.SSLSocketFactory;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft_17;
 import org.java_websocket.handshake.ServerHandshake;
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
 
     private WebSocketClient mWebSocketClient;
     private TextView tvMessage;
+    private SSLContext sslCtx;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,20 +46,19 @@ public class MainActivity extends AppCompatActivity {
         try {
             KeyStore trustStore = KeyStore.getInstance("BKS");
 
-            final InputStream in = getResources().openRawResource(
-                    R.raw.test);
-            trustStore.load(in, null);
+            final InputStream in = getResources().openRawResource(R.raw.test);
+            trustStore.load(in, "weboapps".toCharArray());
 
             final TrustManagerFactory tmf = TrustManagerFactory
                     .getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
 
-            final SSLContext sslCtx = SSLContext.getInstance("TLS");
-            sslCtx.init(null, trustAllCerts,
-                    new java.security.SecureRandom());
+            sslCtx = SSLContext.getInstance("TLS");
+            sslCtx.init(null, trustAllCerts, new java.security.SecureRandom());
 
-            HttpsURLConnection.setDefaultSSLSocketFactory(sslCtx
-                    .getSocketFactory());
+            HttpsURLConnection.setDefaultHostnameVerifier(SSLSocketFactory.BROWSER_COMPATIBLE_HOSTNAME_VERIFIER);
+            HttpsURLConnection.setDefaultSSLSocketFactory(sslCtx.getSocketFactory());
+
         } catch (IOException | KeyStoreException | NoSuchAlgorithmException |
                 CertificateException |
                 KeyManagementException e) {
@@ -66,11 +67,12 @@ public class MainActivity extends AppCompatActivity {
 
         tvMessage = (TextView) findViewById(R.id.tvMessage);
         tvMessage.setText("Connecting...");
-        Log.i("Websocket", "Instanciando websocket");
+        Log.i("Websocket", "Initiating websocket");
         URI uri;
         try {
+            /*uri = new URI("wss://api-cocoon.weboapps" +
+            ".com/api/v1/websocket/movements?device_id=VIEW-307026-CNMWJ&encoding=text");*/
             uri = new URI("wss://echo.websocket.org");
-
         } catch (URISyntaxException e) {
             e.printStackTrace();
             return;
@@ -84,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
                 tvMessage.setText(tvMessage.getText()
                         + "\nonOpen: " + serverHandshake.getHttpStatus() + " " + serverHandshake
                         .getHttpStatusMessage());
+                mWebSocketClient.send("Hello");
             }
 
             @Override
@@ -95,6 +98,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onClose(int i, String s, boolean b) {
+                Log.i("Websocket", "onClose: " + s);
                 tvMessage.setText(tvMessage.getText()
                         + "\nonClose: " + s);
             }
@@ -108,12 +112,12 @@ public class MainActivity extends AppCompatActivity {
         };
 
         try {
-            mWebSocketClient.setSocket(HttpsURLConnection.getDefaultSSLSocketFactory().createSocket());
-            mWebSocketClient.connectBlocking();
-
-            /*int port = 443;
-            mWebSocketClient.setSocket(SSLSocketFactory.getDefault().createSocket(uri.getHost(), port));
+            /*mWebSocketClient.setSocket(HttpsURLConnection.getDefaultSSLSocketFactory().createSocket());
             mWebSocketClient.connectBlocking();*/
+
+            int port = 443;
+            mWebSocketClient.setSocket(HttpsURLConnection.getDefaultSSLSocketFactory().createSocket(uri.getHost(), port));
+            mWebSocketClient.connectBlocking();
         } catch (IOException e) {
             e.printStackTrace();
         } catch (InterruptedException e) {
@@ -134,4 +138,12 @@ public class MainActivity extends AppCompatActivity {
                                        String authType) throws CertificateException {
         }
     }};
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (mWebSocketClient != null) {
+            mWebSocketClient.close();
+        }
+    }
 }
