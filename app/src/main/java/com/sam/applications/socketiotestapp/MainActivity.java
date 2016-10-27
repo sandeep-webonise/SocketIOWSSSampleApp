@@ -70,9 +70,7 @@ public class MainActivity extends AppCompatActivity {
         Log.i("Websocket", "Initiating websocket");
         URI uri;
         try {
-            /*uri = new URI("wss://api-cocoon.weboapps" +
-            ".com/api/v1/websocket/movements?device_id=VIEW-307026-CNMWJ&encoding=text");*/
-            uri = new URI("wss://echo.websocket.org");
+            uri = new URI("wss://10.0.0.85/connect"); // TODO change URI and test
         } catch (URISyntaxException e) {
             e.printStackTrace();
             return;
@@ -83,31 +81,26 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onOpen(ServerHandshake serverHandshake) {
                 Log.i("Websocket", "onOpen: " + serverHandshake.getHttpStatus() + " " + serverHandshake.getHttpStatusMessage());
-                tvMessage.setText(tvMessage.getText()
-                        + "\nonOpen: " + serverHandshake.getHttpStatus() + " " + serverHandshake
-                        .getHttpStatusMessage());
-                mWebSocketClient.send("Hello");
+                setText("\nonOpen: " + serverHandshake.getHttpStatus() + " " + serverHandshake.getHttpStatusMessage());
             }
 
             @Override
             public void onMessage(String s) {
                 Log.i("Websocket", "onMessage: " + s);
-                tvMessage.setText(tvMessage.getText()
-                        + "\nonMessage: " + s);
+                setText("\nonMessage: " + s);
+                mWebSocketClient.send("Hello");
             }
 
             @Override
             public void onClose(int i, String s, boolean b) {
                 Log.i("Websocket", "onClose: " + s);
-                tvMessage.setText(tvMessage.getText()
-                        + "\nonClose: " + s);
+                setText("\nonClose: " + s);
             }
 
             @Override
             public void onError(Exception e) {
                 Log.i("Websocket", "onError: " + e.getMessage());
-                tvMessage.setText(tvMessage.getText()
-                        + "\nonError: " + e.getMessage());
+                setText("\nonError: " + e.getMessage());
             }
         };
 
@@ -145,5 +138,14 @@ public class MainActivity extends AppCompatActivity {
         if (mWebSocketClient != null) {
             mWebSocketClient.close();
         }
+    }
+
+    private void setText(final String value) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                tvMessage.setText(tvMessage.getText() + value);
+            }
+        });
     }
 }
